@@ -64,32 +64,7 @@ jobs:
           GITHUB_ACTIONS: true
         run: python main.py
 
-      - name: Copy markdown to docs directory
-        if: success()
-        run: |
-          echo "📋 准备复制Markdown文件到docs目录..."
-          
-          # 创建docs/news目录
-          mkdir -p docs/news
-          
-          # 检查是否生成了Markdown文件
-          if [ ! -d "docs/markdown" ] || [ -z "$(ls -A docs/markdown 2>/dev/null)" ]; then
-            echo "⚠️ 没有生成Markdown文件，跳过复制"
-            exit 0
-          fi
-          
-          # 复制Markdown文件到docs/news
-          echo "📄 复制文件中..."
-          cp -f docs/markdown/*.md docs/news/ 2>/dev/null || {
-            echo "⚠️ 复制失败，可能没有新文件"
-            exit 0
-          }
-          
-          # 显示复制的文件
-          echo "✅ 已复制以下文件到 docs/news/:"
-          ls -lh docs/news/*.md | tail -5
-          
-          echo "✅ Markdown文件已成功复制到 docs/news/ 目录"
+
 
       - name: Commit and push to current repository
         run: |
