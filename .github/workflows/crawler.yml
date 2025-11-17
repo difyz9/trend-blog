@@ -73,7 +73,12 @@ jobs:
           git config --global user.email 'actions@github.com'
           
           echo "📝 检查更改..."
+          # 添加所有输出文件：docs目录（包括markdown、html、txt）和index.html
           git add docs/ index.html 2>/dev/null || true
+          
+          # 显示将要提交的文件
+          echo "📋 待提交的文件："
+          git diff --cached --name-only || true
           
           # 检查是否有更改需要提交
           if git diff --quiet && git diff --staged --quiet; then
@@ -94,4 +99,7 @@ jobs:
             git push
           }
           
-          echo "✅ 新闻已成功更新到当前仓库的 docs/news/ 目录！"
+          echo "✅ 新闻已成功更新！"
+          echo "  - Markdown文件: docs/日期文件夹/*.md"
+          echo "  - HTML文件: docs/日期文件夹/html/*.html"
+          echo "  - TXT文件: docs/日期文件夹/txt/*.txt"

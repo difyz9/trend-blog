@@ -4634,38 +4634,62 @@ class NewsAnalyzer:
         new_titles: Optional[Dict] = None,
         id_to_name: Optional[Dict] = None,
     ) -> Optional[str]:
-        """生成Markdown报告"""
+        """生成Markdown报告（包括每小时报告和每日汇总）"""
         try:
             print("\n" + "="*50)
             print("开始生成Markdown报告...")
             print("="*50)
             
-            # 生成Markdown内容
-            markdown_content = generate_markdown_report(
+            base_dir = CONFIG.get("OUTPUT_BASE_DIR", "output")
+            date_folder = format_date_folder()
+            output_dir = f"{base_dir}/{date_folder}"
+            
+            # 1. 生成当前时间点的Markdown报告
+            current_markdown_content = generate_markdown_report(
                 stats=stats,
                 total_titles=sum(stat["count"] for stat in stats),
                 report_mode=self.report_mode,
                 failed_ids=failed_ids,
                 new_titles=new_titles,
                 id_to_name=id_to_name,
-                is_daily_summary=True,
+                is_daily_summary=False,  # 当前时间点报告
             )
             
-            # 保存Markdown文件到日期文件夹下
-            base_dir = CONFIG.get("OUTPUT_BASE_DIR", "output")
-            date_folder = format_date_folder()
-            output_dir = f"{base_dir}/{date_folder}"
-            
-            markdown_file = save_markdown_report(
-                markdown_content,
+            # 保存当前时间点的Markdown文件（文件名带时间戳）
+            current_markdown_file = save_markdown_report(
+                current_markdown_content,
                 output_dir=output_dir,
+                filename=None,  # 自动生成带时间戳的文件名
             )
             
-            print(f"✅ Markdown报告已生成: {markdown_file}")
+            print(f"✅ 当前时间点Markdown已生成: {current_markdown_file}")
+            
+            # 2. 生成每日汇总Markdown报告
+            summary_markdown_content = generate_markdown_report(
+                stats=stats,
+                total_titles=sum(stat["count"] for stat in stats),
+                report_mode=self.report_mode,
+                failed_ids=failed_ids,
+                new_titles=new_titles,
+                id_to_name=id_to_name,
+                is_daily_summary=True,  # 每日汇总报告
+            )
+            
+            # 保存每日汇总Markdown文件（固定文件名，每次覆盖）
+            summary_markdown_file = save_markdown_report(
+                summary_markdown_content,
+                output_dir=output_dir,
+                filename="README.md",  # 每日汇总文件
+            )
+            
+            print(f"✅ 每日汇总Markdown已生成: {summary_markdown_file}")
             print("="*50 + "\n")
             
-            self.latest_markdown_file = markdown_file
-            return markdown_file
+            # 保存文件路径供后续使用
+            self.latest_markdown_file = current_markdown_file
+            self.summary_markdown_file = summary_markdown_file
+            
+            return current_markdown_file
             
         except Exception as e:
             import traceback
@@ -4678,16 +4702,26 @@ class NewsAnalyzer:
     def _push_to_github_only(self) -> None:
         """推送Markdown文件到GitHub"""
         try:
-            if not hasattr(self, 'latest_markdown_file') or not self.latest_markdown_file:
+            files_to_push = []
+            
+            # 收集所有要推送的文件
+            if hasattr(self, 'latest_markdown_file') and self.latest_markdown_file:
+                files_to_push.append(self.latest_markdown_file)
+            
+            if hasattr(self, 'summary_markdown_file') and self.summary_markdown_file:
+                files_to_push.append(self.summary_markdown_file)
+            
+            if not files_to_push:
                 print("⚠️ 没有可推送的Markdown文件")
                 return
             
             print("\n" + "="*50)
             print("开始推送到GitHub...")
+            print(f"待推送文件: {files_to_push}")
             print("="*50)
             
             # 推送到GitHub
-            if self.github_service.push_files([self.latest_markdown_file]):
+            if self.github_service.push_files(files_to_push):
                 print("✅ 成功推送到GitHub仓库")
             else:
                 print("❌ 推送到GitHub失败")
