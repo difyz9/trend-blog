@@ -73,14 +73,14 @@ jobs:
           mkdir -p docs/news
           
           # 检查是否生成了Markdown文件
-          if [ ! -d "output/markdown" ] || [ -z "$(ls -A output/markdown 2>/dev/null)" ]; then
+          if [ ! -d "docs/markdown" ] || [ -z "$(ls -A docs/markdown 2>/dev/null)" ]; then
             echo "⚠️ 没有生成Markdown文件，跳过复制"
             exit 0
           fi
           
           # 复制Markdown文件到docs/news
           echo "📄 复制文件中..."
-          cp -f output/markdown/*.md docs/news/ 2>/dev/null || {
+          cp -f docs/markdown/*.md docs/news/ 2>/dev/null || {
             echo "⚠️ 复制失败，可能没有新文件"
             exit 0
           }
@@ -97,8 +97,8 @@ jobs:
           git config --global user.name 'TrendRadar Bot'
           git config --global user.email 'actions@github.com'
           
-          echo "� 检查更改..."
-          git add docs/news/*.md output/ index.html 2>/dev/null || true
+          echo "📝 检查更改..."
+          git add docs/ index.html 2>/dev/null || true
           
           # 检查是否有更改需要提交
           if git diff --quiet && git diff --staged --quiet; then
