@@ -201,22 +201,33 @@ def load_config():
         "ntfy_token", ""
     )
 
-    # GitHub推送配置
+    # GitHub推送配置（可选，如果配置文件中没有则使用默认值）
     github_config = config_data.get("github", {})
-    config["GITHUB"] = {
-        "enabled": os.environ.get("GITHUB_ENABLED", "").strip().lower() in ("true", "1")
-        if os.environ.get("GITHUB_ENABLED", "").strip()
-        else github_config.get("enabled", False),
-        "repo_url": os.environ.get("GITHUB_REPO_URL", "").strip()
-        or github_config.get("repo_url", ""),
-        "token": os.environ.get("GITHUB_TOKEN", "").strip()
-        or github_config.get("token", ""),
-        "branch": os.environ.get("GITHUB_BRANCH", "").strip()
-        or github_config.get("branch", "main"),
-        "local_path": os.environ.get("GITHUB_LOCAL_PATH", "").strip()
-        or github_config.get("local_path", "output/github_repo"),
-        "commit_message": github_config.get("commit_message", "🔥 更新热点新闻: {date}"),
-    }
+    if github_config:
+        config["GITHUB"] = {
+            "enabled": os.environ.get("GITHUB_ENABLED", "").strip().lower() in ("true", "1")
+            if os.environ.get("GITHUB_ENABLED", "").strip()
+            else github_config.get("enabled", False),
+            "repo_url": os.environ.get("GITHUB_REPO_URL", "").strip()
+            or github_config.get("repo_url", ""),
+            "token": os.environ.get("GITHUB_TOKEN", "").strip()
+            or github_config.get("token", ""),
+            "branch": os.environ.get("GITHUB_BRANCH", "").strip()
+            or github_config.get("branch", "main"),
+            "local_path": os.environ.get("GITHUB_LOCAL_PATH", "").strip()
+            or github_config.get("local_path", "output/github_repo"),
+            "commit_message": github_config.get("commit_message", "🔥 更新热点新闻: {date}"),
+        }
+    else:
+        # 如果配置文件中没有 GitHub 配置，创建一个禁用的默认配置
+        config["GITHUB"] = {
+            "enabled": False,
+            "repo_url": "",
+            "token": "",
+            "branch": "main",
+            "local_path": "output/github_repo",
+            "commit_message": "🔥 更新热点新闻: {date}",
+        }
 
     # 输出配置来源信息
     notification_sources = []
@@ -249,8 +260,8 @@ def load_config():
         print("未配置任何通知渠道")
 
     # GitHub推送配置输出
-    if config["GITHUB"]["enabled"]:
-        repo_url = config["GITHUB"]["repo_url"]
+    if config.get("GITHUB", {}).get("enabled", False):
+        repo_url = config["GITHUB"].get("repo_url", "")
         if repo_url:
             # 隐藏敏感信息
             safe_url = repo_url.split("@")[-1] if "@" in repo_url else repo_url
@@ -4133,9 +4144,13 @@ class NewsAnalyzer:
 
         # 初始化GitHub推送服务
         self.github_service = None
-        if MARKDOWN_AVAILABLE and CONFIG["GITHUB"]["enabled"]:
+        self.latest_markdown_file = None
+        
+        # 检查GitHub配置是否存在
+        github_config = CONFIG.get("GITHUB", {})
+        if MARKDOWN_AVAILABLE and github_config.get("enabled", False):
             try:
-                self.github_service = GitHubPushService(CONFIG["GITHUB"])
+                self.github_service = GitHubPushService(github_config)
                 print("✅ GitHub推送服务已初始化")
             except Exception as e:
                 print(f"⚠️ GitHub推送服务初始化失败: {e}")
@@ -4588,9 +4603,13 @@ class NewsAnalyzer:
                 # daily模式：直接生成汇总报告并发送通知
                 summary_html = self._generate_summary_report(mode_strategy)
 
-        # 生成Markdown并推送到GitHub（如果启用）
+        # 生成Markdown报告
+        if MARKDOWN_AVAILABLE:
+            self._generate_markdown_report(stats, failed_ids, new_titles, id_to_name)
+        
+        # 推送到GitHub（如果启用）
         if self.github_service and MARKDOWN_AVAILABLE:
-            self._push_to_github(stats, failed_ids, new_titles, id_to_name)
+            self._push_to_github_only()
 
         # 打开浏览器（仅在非容器环境）
         if self._should_open_browser() and html_file:
@@ -4610,17 +4629,17 @@ class NewsAnalyzer:
 
         return summary_html
 
-    def _push_to_github(
+    def _generate_markdown_report(
         self,
         stats: List[Dict],
         failed_ids: Optional[List] = None,
         new_titles: Optional[Dict] = None,
         id_to_name: Optional[Dict] = None,
-    ) -> None:
-        """生成Markdown并推送到GitHub"""
+    ) -> Optional[str]:
+        """生成Markdown报告"""
         try:
             print("\n" + "="*50)
-            print("开始GitHub推送流程...")
+            print("开始生成Markdown报告...")
             print("="*50)
             
             # 生成Markdown内容
@@ -4641,9 +4660,32 @@ class NewsAnalyzer:
             )
             
             print(f"✅ Markdown报告已生成: {markdown_file}")
+            print("="*50 + "\n")
+            
+            self.latest_markdown_file = markdown_file
+            return markdown_file
+            
+        except Exception as e:
+            import traceback
+            print(f"❌ Markdown生成过程出错: {e}")
+            print(f"详细错误信息：")
+            traceback.print_exc()
+            print("="*50 + "\n")
+            return None
+    
+    def _push_to_github_only(self) -> None:
+        """推送Markdown文件到GitHub"""
+        try:
+            if not hasattr(self, 'latest_markdown_file') or not self.latest_markdown_file:
+                print("⚠️ 没有可推送的Markdown文件")
+                return
+            
+            print("\n" + "="*50)
+            print("开始推送到GitHub...")
+            print("="*50)
             
             # 推送到GitHub
-            if self.github_service.push_files([markdown_file]):
+            if self.github_service.push_files([self.latest_markdown_file]):
                 print("✅ 成功推送到GitHub仓库")
             else:
                 print("❌ 推送到GitHub失败")
