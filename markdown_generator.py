@@ -232,19 +232,25 @@ def save_markdown_report(
     
     Args:
         markdown_content: Markdown内容
-        output_dir: 输出目录（可选，为None时使用配置中的目录）
+        output_dir: 输出目录（可选，为None时使用配置中的基础目录+日期）
         filename: 文件名（可选，默认使用时间戳）
         
     Returns:
         保存的文件路径
     """
-    # 如果没有指定输出目录，尝试从配置中读取
+    # 如果没有指定输出目录，使用base_dir/日期文件夹
     if output_dir is None:
         try:
             import main
-            output_dir = main.CONFIG.get("OUTPUT_MARKDOWN_DIR", "output/markdown")
+            import pytz
+            from datetime import datetime as dt
+            
+            base_dir = main.CONFIG.get("OUTPUT_BASE_DIR", "output")
+            beijing_time = dt.now(pytz.timezone("Asia/Shanghai"))
+            date_folder = beijing_time.strftime("%Y年%m月%d日")
+            output_dir = f"{base_dir}/{date_folder}"
         except (ImportError, AttributeError):
-            output_dir = "output/markdown"
+            output_dir = "output"
     
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)

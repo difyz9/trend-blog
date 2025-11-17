@@ -76,7 +76,6 @@ def load_config():
     # 输出目录配置（环境变量优先）
     output_config = config_data.get("output", {})
     config_base_dir = os.environ.get("OUTPUT_BASE_DIR", "").strip() or output_config.get("base_dir", "output")
-    config_markdown_dir = os.environ.get("OUTPUT_MARKDOWN_DIR", "").strip() or output_config.get("markdown_dir", "output/markdown")
     config_html_dir = os.environ.get("OUTPUT_HTML_DIR", "").strip() or output_config.get("html_dir", "")
     config_txt_dir = os.environ.get("OUTPUT_TXT_DIR", "").strip() or output_config.get("txt_dir", "")
     config_push_records_dir = os.environ.get("OUTPUT_PUSH_RECORDS_DIR", "").strip() or output_config.get("push_records_dir", "output/.push_records")
@@ -86,7 +85,6 @@ def load_config():
         "VERSION_CHECK_URL": config_data["app"]["version_check_url"],
         "SHOW_VERSION_UPDATE": config_data["app"]["show_version_update"],
         "OUTPUT_BASE_DIR": config_base_dir,
-        "OUTPUT_MARKDOWN_DIR": config_markdown_dir,
         "OUTPUT_HTML_DIR": config_html_dir,
         "OUTPUT_TXT_DIR": config_txt_dir,
         "OUTPUT_PUSH_RECORDS_DIR": config_push_records_dir,
@@ -4653,10 +4651,14 @@ class NewsAnalyzer:
                 is_daily_summary=True,
             )
             
-            # 保存Markdown文件
+            # 保存Markdown文件到日期文件夹下
+            base_dir = CONFIG.get("OUTPUT_BASE_DIR", "output")
+            date_folder = format_date_folder()
+            output_dir = f"{base_dir}/{date_folder}"
+            
             markdown_file = save_markdown_report(
                 markdown_content,
-                output_dir=CONFIG.get("OUTPUT_MARKDOWN_DIR"),
+                output_dir=output_dir,
             )
             
             print(f"✅ Markdown报告已生成: {markdown_file}")

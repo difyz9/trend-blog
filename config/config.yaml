@@ -5,7 +5,6 @@ app:
 # 输出目录配置
 output:
   base_dir: "docs"  # 输出基础目录
-  markdown_dir: "docs/markdown"  # Markdown文件输出目录
   html_dir: ""  # HTML文件输出目录(为空时自动在base_dir下按日期创建)
   txt_dir: ""  # TXT文件输出目录(为空时自动在base_dir下按日期创建)
   push_records_dir: "docs/.push_records"  # 推送记录目录
