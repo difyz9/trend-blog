@@ -24,7 +24,7 @@ ENV/
 .DS_Store
 
 # Output directories (generated content)
-docs/
+# docs/ # 注释掉，因为 docs 是配置的输出目录，需要提交到 Git
 output/
 *.log
 
